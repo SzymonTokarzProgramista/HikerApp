@@ -1,0 +1,124 @@
+#:import dp kivy.metrics.dp
+#:import AsyncImage kivy.uix.image.AsyncImage
+
+< LoginScreen@Screen >:
+    name: "login"
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(12)
+        MDLabel:
+            text: "Tourismo"
+            halign: "center"
+            font_style: "H4"
+            size_hint_y: None
+            height: dp(64)
+        MDTextField:
+            id: email
+            hint_text: "Email"
+            size_hint_y: None
+            height: dp(48)
+        MDTextField:
+            id: password
+            hint_text: "Hasło"
+            password: True
+            size_hint_y: None
+            height: dp(48)
+        MDRaisedButton:
+            text: "Zaloguj"
+            on_release: app.do_login(email.text, password.text)
+        MDTextButton:
+            text: "Nie masz konta? Zarejestruj się"
+            on_release: app.change_screen("register")
+
+< RegisterScreen@Screen >:
+    name: "register"
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(12)
+        MDLabel:
+            text: "Rejestracja"
+            halign: "center"
+            font_style: "H5"
+            size_hint_y: None
+            height: dp(56)
+        MDTextField:
+            id: remail
+            hint_text: "Email"
+            size_hint_y: None
+            height: dp(48)
+        MDTextField:
+            id: rpassword
+            hint_text: "Hasło"
+            password: True
+            size_hint_y: None
+            height: dp(48)
+        MDRaisedButton:
+            text: "Utwórz konto"
+            on_release: app.do_register(remail.text, rpassword.text)
+        MDTextButton:
+            text: "← Wróć do logowania"
+            on_release: app.change_screen("login")
+
+< FeedScreen@Screen >:
+    name: "feed"
+    MDBoxLayout:
+        orientation: "vertical"
+        MDTopAppBar:
+            title: "Tourismo — feed"
+            left_action_items: [["logout", lambda x: app.change_screen("login")]]
+            right_action_items: [["plus", lambda x: app.change_screen("newpost")]]
+        RecycleView:
+            viewclass: "TwoLineAvatarListItem"
+            size_hint_y: None
+            height: dp(220)
+            data: [{"text": f"{item['user']}  •  {item.get('created_at','')}",
+                    "secondary_text": (f"GPS: {item['lat']:.5f},{item['lon']:.5f}" if item.get('lat') is not None and item.get('lon') is not None else "")} for item in root.posts]
+        ScrollView:
+            MDGridLayout:
+                id: grid
+                cols: 2
+                padding: dp(8)
+                spacing: dp(8)
+                adaptive_height: True
+
+< NewPostScreen@Screen >:
+    name: "newpost"
+    MDBoxLayout:
+        orientation: "vertical"
+        padding: dp(12)
+        spacing: dp(8)
+        MDTopAppBar:
+            title: "Nowy post"
+            left_action_items: [["arrow-left", lambda x: app.change_screen("feed")]]
+        MDLabel:
+            text: "Plik: " + (root.selected_path if root.selected_path else "brak")
+            theme_text_color: "Secondary"
+            size_hint_y: None
+            height: dp(24)
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            spacing: dp(8)
+            MDRaisedButton:
+                text: "Zrób zdjęcie"
+                on_release: root.take_photo()
+            MDRaisedButton:
+                text: "Pobierz GPS"
+                on_release: root.get_location()
+        MDLabel:
+            text: "Pozycja: " + (root.coords if root.coords else "—")
+            theme_text_color: "Secondary"
+            size_hint_y: None
+            height: dp(24)
+        Widget:
+        MDRaisedButton:
+            text: "Opublikuj"
+            on_release: root.publish()
+
+Root:
+    LoginScreen:
+    RegisterScreen:
+    FeedScreen:
+    NewPostScreen:
