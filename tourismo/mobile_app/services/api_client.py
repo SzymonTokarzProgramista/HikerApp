@@ -4,7 +4,7 @@ import requests
 # Ustaw IP backendu:
 # - Emulator Androida -> host: http://10.0.2.2:8000
 # - Telefon w sieci LAN -> np. http://192.168.0.12:8000
-API_BASE = os.getenv("TOURISMO_API", "http://10.0.2.2:8000")
+API_BASE = os.getenv("TOURISMO_API", "http://127.0.0.1:8000")
 API = f"{API_BASE}/api"
 UPLOADS = f"{API_BASE}/uploads"
 

@@ -1,20 +1,22 @@
 import os
 import shutil
+import time
 from typing import Optional, List
 
-from fastapi import FastAPI, UploadFile, Form, Depends, HTTPException
+from fastapi import FastAPI, UploadFile, Form, Depends, HTTPException, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, insert, text
 from sqlalchemy.engine import Result
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import OperationalError
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from db import engine, get_db
 from models import metadata, users, posts
 
 # --- konfiguracja
-API_TITLE = "Tourismo API"
+API_TITLE = os.getenv("API_TITLE", "Tourismo API")
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -32,17 +34,46 @@ app.add_middleware(
 # Mount statyczny do zdjęć
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-# Inicjalizacja tabel
-with engine.begin() as conn:
-    # Stwórz DB jeśli brak (przy połączeniu do istniejącej bazy można pominąć)
-    conn.execute(text("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"))
-metadata.create_all(bind=engine)
 
-# --- Schematy odpowiedzi (proste słowniki)
+# --- pomocnicze: poczekaj na DB (TCP:3306) z prostym backoffem
+def wait_for_db(max_tries: int = 60, delay_sec: float = 1.0) -> None:
+    """
+    Próbuje nawiązać krótkie połączenie z DB i wykonać SELECT 1.
+    Rzuca RuntimeError po przekroczeniu limitu prób.
+    """
+    last_err: Optional[Exception] = None
+    for attempt in range(1, max_tries + 1):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            return
+        except OperationalError as e:
+            last_err = e
+        except Exception as e:
+            last_err = e
+        time.sleep(delay_sec)
+    raise RuntimeError(f"DB not ready after {max_tries} tries") from last_err
+
+
+# --- lifecycle: inicjalizacja po starcie, gdy DB jest już gotowa
+@app.on_event("startup")
+def _startup() -> None:
+    # Czekaj aż MySQL słucha na TCP i przyjmuje zapytania
+    wait_for_db()
+
+    # Ustawienia SQL i utworzenie tabel (idempotentnie)
+    with engine.begin() as conn:
+        # wyłącz ONLY_FULL_GROUP_BY (jeśli chcesz; możesz pominąć)
+        conn.execute(text("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"))
+    metadata.create_all(bind=engine)
+
+
+# --- endpointy
 
 @app.get("/api/health")
 def health():
     return {"ok": True}
+
 
 @app.post("/api/register")
 def register(
@@ -58,6 +89,7 @@ def register(
     db.commit()
     return {"ok": True}
 
+
 @app.post("/api/login")
 def login(
     email: str = Form(...),
@@ -72,12 +104,13 @@ def login(
         raise HTTPException(status_code=401, detail="Błędny e-mail lub hasło.")
     return {"ok": True, "user_id": int(row.id), "email": row.email}
 
+
 @app.post("/api/upload")
 def upload_post(
     user_id: int = Form(...),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
-    file: UploadFile = Form(...),
+    file: UploadFile = File(...),  # File zamiast Form dla uploadu
     db: Session = Depends(get_db),
 ):
     # Walidacja: czy user istnieje
@@ -86,7 +119,8 @@ def upload_post(
 
     # Zapis pliku
     filename = file.filename or "photo.jpg"
-    safe_name = f"{user_id}_{filename}".replace("..", ".")
+    # Proste utwardzenie nazwy (uniknięcie ../)
+    safe_name = f"{user_id}_{os.path.basename(filename)}".replace("..", ".")
     dest_path = os.path.join(UPLOAD_DIR, safe_name)
     with open(dest_path, "wb") as buf:
         shutil.copyfileobj(file.file, buf)
@@ -103,6 +137,7 @@ def upload_post(
     db.commit()
     return {"ok": True, "photo_url": f"/uploads/{safe_name}"}
 
+
 @app.get("/api/feed")
 def get_feed(db: Session = Depends(get_db)) -> List[dict]:
     # proste JOIN + sort DESC
@@ -115,7 +150,7 @@ def get_feed(db: Session = Depends(get_db)) -> List[dict]:
             LIMIT 100
         """)
     )
-    items = []
+    items: List[dict] = []
     for row in result.mappings():
         items.append({
             "id": int(row["id"]),

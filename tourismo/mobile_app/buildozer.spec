@@ -7,7 +7,7 @@ source.include_exts = py,kv,png,jpg,txt,md,json
 version = 0.1.0
 
 # Biblioteki Pythona (kivy + mobilne utilsy)
-requirements = python3,kivy==2.3.0,kivymd,plyer,pillow,requests
+requirements = python3,kivy==2.3.0,https://github.com/kivymd/KivyMD/archive/master.zip,plyer,pillow,requests
 
 orientation = portrait
 icon.filename = assets/icon.png

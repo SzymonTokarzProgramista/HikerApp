@@ -4,7 +4,7 @@ services:
     container_name: tourismo-db
     restart: always
     env_file:
-      - .env
+      - ./backend/.env
     ports:
       - "3306:3306"
     volumes:

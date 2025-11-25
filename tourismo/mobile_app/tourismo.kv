@@ -1,124 +1,193 @@
 #:import dp kivy.metrics.dp
-#:import AsyncImage kivy.uix.image.AsyncImage
+#:import FitImage kivymd.uix.fitimage.FitImage
 
-< LoginScreen@Screen >:
+<LoginScreen@MDScreen>:
     name: "login"
     MDBoxLayout:
         orientation: "vertical"
-        padding: dp(16)
-        spacing: dp(12)
-        MDLabel:
-            text: "Tourismo"
-            halign: "center"
-            font_style: "H4"
-            size_hint_y: None
-            height: dp(64)
-        MDTextField:
-            id: email
-            hint_text: "Email"
-            size_hint_y: None
-            height: dp(48)
-        MDTextField:
-            id: password
-            hint_text: "Hasło"
-            password: True
-            size_hint_y: None
-            height: dp(48)
-        MDRaisedButton:
-            text: "Zaloguj"
-            on_release: app.do_login(email.text, password.text)
-        MDTextButton:
-            text: "Nie masz konta? Zarejestruj się"
-            on_release: app.change_screen("register")
+        padding: dp(20)
+        spacing: dp(16)
 
-< RegisterScreen@Screen >:
+        MDBoxLayout:
+            orientation: "vertical"
+            adaptive_height: True
+            spacing: dp(6)
+            MDLabel:
+                text: "tourismo"
+                halign: "center"
+                font_style: "H4"
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.primary_color
+                size_hint_y: None
+                height: dp(56)
+            MDLabel:
+                text: "Zaloguj się, aby odkrywać"
+                halign: "center"
+                theme_text_color: "Secondary"
+                size_hint_y: None
+                height: dp(24)
+
+        MDCard:
+            style: "elevated"
+            radius: [12, 12, 12, 12]
+            padding: dp(16)
+            spacing: dp(12)
+            orientation: "vertical"
+            MDTextField:
+                id: email
+                hint_text: "E-mail"
+                text: ""
+                size_hint_y: None
+                height: dp(56)
+                icon_left: "email-outline"
+            MDTextField:
+                id: password
+                hint_text: "Hasło"
+                password: True
+                size_hint_y: None
+                height: dp(56)
+                icon_left: "lock-outline"
+
+            MDRaisedButton:
+                text: "Zaloguj"
+                md_bg_color: app.theme_cls.primary_color
+                on_release: app.do_login(email.text, password.text)
+
+            MDTextButton:
+                text: "Nie masz konta? Zarejestruj się"
+                on_release: app.change_screen("register")
+                theme_text_color: "Custom"
+                text_color: app.theme_cls.primary_color
+
+
+<RegisterScreen@MDScreen>:
     name: "register"
     MDBoxLayout:
         orientation: "vertical"
-        padding: dp(16)
-        spacing: dp(12)
-        MDLabel:
-            text: "Rejestracja"
-            halign: "center"
-            font_style: "H5"
-            size_hint_y: None
-            height: dp(56)
-        MDTextField:
-            id: remail
-            hint_text: "Email"
-            size_hint_y: None
-            height: dp(48)
-        MDTextField:
-            id: rpassword
-            hint_text: "Hasło"
-            password: True
-            size_hint_y: None
-            height: dp(48)
-        MDRaisedButton:
-            text: "Utwórz konto"
-            on_release: app.do_register(remail.text, rpassword.text)
-        MDTextButton:
-            text: "← Wróć do logowania"
-            on_release: app.change_screen("login")
+        padding: dp(20)
+        spacing: dp(16)
 
-< FeedScreen@Screen >:
+        MDTopAppBar:
+            title: "Rejestracja"
+            elevation: 0
+            left_action_items: [["arrow-left", lambda x: app.change_screen("login")]]
+
+        MDCard:
+            style: "elevated"
+            radius: [12, 12, 12, 12]
+            padding: dp(16)
+            spacing: dp(12)
+            orientation: "vertical"
+            MDTextField:
+                id: remail
+                hint_text: "E-mail"
+                size_hint_y: None
+                height: dp(56)
+                icon_left: "email-outline"
+            MDTextField:
+                id: rpassword
+                hint_text: "Hasło"
+                password: True
+                size_hint_y: None
+                height: dp(56)
+                icon_left: "lock-outline"
+            MDRaisedButton:
+                text: "Utwórz konto"
+                md_bg_color: app.theme_cls.primary_color
+                on_release: app.do_register(remail.text, rpassword.text)
+
+
+<FeedScreen@MDScreen>:
     name: "feed"
     MDBoxLayout:
         orientation: "vertical"
+
         MDTopAppBar:
-            title: "Tourismo — feed"
+            title: "Odkrywaj"
             left_action_items: [["logout", lambda x: app.change_screen("login")]]
             right_action_items: [["plus", lambda x: app.change_screen("newpost")]]
-        RecycleView:
-            viewclass: "TwoLineAvatarListItem"
-            size_hint_y: None
-            height: dp(220)
-            data: [{"text": f"{item['user']}  •  {item.get('created_at','')}",
-                    "secondary_text": (f"GPS: {item['lat']:.5f},{item['lon']:.5f}" if item.get('lat') is not None and item.get('lon') is not None else "")} for item in root.posts]
+            elevation: 0
+
+        MDBoxLayout:
+            adaptive_height: True
+            padding: dp(16), dp(8)
+            MDLabel:
+                text: app.state_email if app.state_email else "—"
+                theme_text_color: "Secondary"
+
         ScrollView:
             MDGridLayout:
                 id: grid
                 cols: 2
-                padding: dp(8)
-                spacing: dp(8)
+                padding: dp(12)
+                spacing: dp(12)
                 adaptive_height: True
 
-< NewPostScreen@Screen >:
+        MDFloatingActionButton:
+            icon: "plus"
+            md_bg_color: app.theme_cls.primary_color
+            pos_hint: {"center_x": .9, "center_y": .08}
+            on_release: app.change_screen("newpost")
+
+
+<NewPostScreen@MDScreen>:
+    # zakładam, że w main.py masz klasę NewPostScreen z atrybutami:
+    # photo_path (str), coords (str) oraz metodami open_camera(), get_location(), publish()
     name: "newpost"
     MDBoxLayout:
         orientation: "vertical"
-        padding: dp(12)
-        spacing: dp(8)
+        padding: dp(16)
+        spacing: dp(12)
+
         MDTopAppBar:
             title: "Nowy post"
+            elevation: 0
             left_action_items: [["arrow-left", lambda x: app.change_screen("feed")]]
-        MDLabel:
-            text: "Plik: " + (root.selected_path if root.selected_path else "brak")
-            theme_text_color: "Secondary"
+
+        MDCard:
+            style: "elevated"
+            radius: [12, 12, 12, 12]
+            padding: dp(12)
+            spacing: dp(12)
+            orientation: "vertical"
             size_hint_y: None
-            height: dp(24)
-        MDBoxLayout:
-            size_hint_y: None
-            height: dp(48)
-            spacing: dp(8)
-            MDRaisedButton:
-                text: "Zrób zdjęcie"
-                on_release: root.take_photo()
-            MDRaisedButton:
-                text: "Pobierz GPS"
-                on_release: root.get_location()
-        MDLabel:
-            text: "Pozycja: " + (root.coords if root.coords else "—")
-            theme_text_color: "Secondary"
-            size_hint_y: None
-            height: dp(24)
+            height: dp(280)
+
+            FitImage:
+                source: root.photo_path if root.photo_path else ""
+                radius: [10, 10, 10, 10]
+                size_hint_y: None
+                height: dp(180)
+
+            MDBoxLayout:
+                spacing: dp(8)
+                MDRaisedButton:
+                    text: "Zrób zdjęcie"
+                    md_bg_color: app.theme_cls.primary_color
+                    on_release: root.open_camera()
+                MDOutlinedButton:
+                    text: "Lokalizacja"
+                    on_release: root.get_location()
+
+            MDLabel:
+                text: "Pozycja: " + (root.coords if root.coords else "—")
+                theme_text_color: "Secondary"
+                size_hint_y: None
+                height: dp(24)
+
         Widget:
+
         MDRaisedButton:
             text: "Opublikuj"
+            md_bg_color: app.theme_cls.primary_color
             on_release: root.publish()
 
-Root:
+
+<Root@MDScreenManager>:
     LoginScreen:
     RegisterScreen:
     FeedScreen:
     NewPostScreen:
+
+
+Root:
