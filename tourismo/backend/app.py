@@ -35,7 +35,7 @@ app.add_middleware(
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
-# --- pomocnicze: poczekaj na DB (TCP:3306) z prostym backoffem
+# --- pomocnicze: poczekaj na DB z prostym backoffem
 def wait_for_db(max_tries: int = 60, delay_sec: float = 1.0) -> None:
     """
     Próbuje nawiązać krótkie połączenie z DB i wykonać SELECT 1.
@@ -58,13 +58,19 @@ def wait_for_db(max_tries: int = 60, delay_sec: float = 1.0) -> None:
 # --- lifecycle: inicjalizacja po starcie, gdy DB jest już gotowa
 @app.on_event("startup")
 def _startup() -> None:
-    # Czekaj aż MySQL słucha na TCP i przyjmuje zapytania
+    # Poczekaj aż DB przyjmuje zapytania
     wait_for_db()
 
     # Ustawienia SQL i utworzenie tabel (idempotentnie)
     with engine.begin() as conn:
-        # wyłącz ONLY_FULL_GROUP_BY (jeśli chcesz; możesz pominąć)
-        conn.execute(text("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"))
+        # To ma sens tylko dla MySQL/MariaDB. Na PostgreSQL spowoduje błąd składni,
+        # więc zostawiamy warunek bezpieczeństwa.
+        if engine.dialect.name in ("mysql", "mariadb"):
+            conn.execute(
+                text("SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));")
+            )
+
+    # Utwórz tabele
     metadata.create_all(bind=engine)
 
 
@@ -82,7 +88,9 @@ def register(
     db: Session = Depends(get_db),
 ):
     # sprawdź czy istnieje
-    exists: Optional[tuple] = db.execute(select(users.c.id).where(users.c.email == email)).fetchone()
+    exists: Optional[tuple] = db.execute(
+        select(users.c.id).where(users.c.email == email)
+    ).fetchone()
     if exists:
         raise HTTPException(status_code=400, detail="Użytkownik o takim e-mailu już istnieje.")
     db.execute(insert(users).values(email=email, password=generate_password_hash(password)))

@@ -1,2 +1,4 @@
 *.env
-tourismo/mobile_app/.buildozer/
+/tourismo/mobile_app/.buildozer/
+/venv/
+/tourismo/mobile_app/venv/

@@ -1,38 +1,48 @@
-import os
+# services/api_client.py
+
+BASE_URL = "http://127.0.0.1:8000/api" 
+
 import requests
 
-# Ustaw IP backendu:
-# - Emulator Androida -> host: http://10.0.2.2:8000
-# - Telefon w sieci LAN -> np. http://192.168.0.12:8000
-API_BASE = os.getenv("TOURISMO_API", "http://127.0.0.1:8000")
-API = f"{API_BASE}/api"
-UPLOADS = f"{API_BASE}/uploads"
-
 class APIClient:
-    def register(self, email, password):
-        r = requests.post(f"{API}/register", data={"email": email, "password": password}, timeout=10)
-        r.raise_for_status()
-        return r.json()
+    def __init__(self, base_url: str = BASE_URL):
+        self.base_url = base_url.rstrip("/")
 
-    def login(self, email, password):
-        r = requests.post(f"{API}/login", data={"email": email, "password": password}, timeout=10)
-        r.raise_for_status()
-        return r.json()
+    def register(self, email: str, password: str):
+        resp = requests.post(
+            f"{self.base_url}/register",
+            data={"email": email, "password": password},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        return resp.json()
 
-    def upload_post(self, user_id, filepath, lat=None, lon=None):
-        with open(filepath, "rb") as f:
-            files = {"file": (os.path.basename(filepath), f, "image/jpeg")}
-            data = {"user_id": str(user_id)}
-            if lat is not None: data["lat"] = str(lat)
-            if lon is not None: data["lon"] = str(lon)
-            r = requests.post(f"{API}/upload", data=data, files=files, timeout=30)
-            r.raise_for_status()
-            return r.json()
+    def login(self, email: str, password: str):
+        resp = requests.post(
+            f"{self.base_url}/login",
+            data={"email": email, "password": password},
+            timeout=5,
+        )
+        resp.raise_for_status()
+        return resp.json()
 
     def get_feed(self):
-        r = requests.get(f"{API}/feed", timeout=10)
-        r.raise_for_status()
-        return r.json()
+        resp = requests.get(f"{self.base_url}/feed", timeout=5)
+        resp.raise_for_status()
+        return resp.json()
 
-    def uploads_url(self, path: str) -> str:
-        return f"{UPLOADS}/{path.lstrip('/')}"
+    def upload_photo(self, user_id: int, filepath: str, lat=None, lon=None):
+        files = {"file": open(filepath, "rb")}
+        data = {"user_id": user_id}
+        if lat is not None and lon is not None:
+            data["lat"] = lat
+            data["lon"] = lon
+
+        resp = requests.post(
+            f"{self.base_url}/upload",
+            data=data,
+            files=files,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        return resp.json()
